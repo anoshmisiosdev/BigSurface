@@ -16,6 +16,21 @@ jobs:
       - name: Toolchain
         run: xcodebuild -version
 
+      # The project expects the Lilu and VirtualSMC SDKs (DEBUG kexts carry the headers) at
+      # Dependencies/Lilu.kext and Dependencies/VirtualSMC.kext, next to the submodules.
+      - name: Fetch Lilu and VirtualSMC SDK headers
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -e
+          mkdir -p sdk && cd sdk
+          gh release download --repo acidanthera/Lilu --pattern 'Lilu-*-DEBUG.zip' -D lilu
+          gh release download --repo acidanthera/VirtualSMC --pattern 'VirtualSMC-*-DEBUG.zip' -D vsmc
+          unzip -q lilu/*.zip -d lilu/x && unzip -q vsmc/*.zip -d vsmc/x
+          mv "$(find lilu/x -maxdepth 3 -name Lilu.kext -type d | head -1)" ../Dependencies/Lilu.kext
+          mv "$(find vsmc/x -maxdepth 3 -name VirtualSMC.kext -type d | head -1)" ../Dependencies/VirtualSMC.kext
+          ls ../Dependencies/Lilu.kext/Contents/Resources/Headers/kern_util.hpp ../Dependencies/VirtualSMC.kext/Contents/Resources/VirtualSMCSDK/kern_vsmcapi.hpp
+
       - name: Build BigSurface.kext (Release, unsigned)
         run: |
           set -o pipefail
