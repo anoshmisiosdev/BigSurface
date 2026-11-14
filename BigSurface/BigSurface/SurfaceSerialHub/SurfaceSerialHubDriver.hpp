@@ -19,6 +19,7 @@ enum SurfaceSerialEventRegistryType {
     SurfaceSerialEventHostManagedV1 = 0,
     SurfaceSerialEventHostManagedV2,
     SurfaceSerialEventHubManaged,
+    SurfaceSerialEventHostManagedV2Primary,  // REG registry addressed at target 1 (Surface Laptop Studio HID devices)
     SurfaceSerialEventTypeCount
 };
 

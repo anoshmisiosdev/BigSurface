@@ -20,6 +20,7 @@ enum SurfaceHIDDescriptorEntryType : UInt8 {
 enum SurfaceHIDDeviceType {
     SurfaceLegacyKeyboardDevice = 0x00,
     SurfaceKeyboardDevice       = 0x01,
+    SurfaceAuxKeyboardDevice    = 0x02,     // Surface Laptop Studio: second keyboard collection (media/system keys)
     SurfaceTouchpadDevice       = 0x03,
 };
 
@@ -50,6 +51,9 @@ struct PACKED SurfaceHIDAttributes {
 };
 
 #define SURFACE_LEGACY_HID_STRING       "SurfaceLegacyHID"
+#define SURFACE_HID_TID_STRING          "SurfaceHIDTargetID"     // SAM target the HID devices live on (1 or 2)
+#define SURFACE_HID_AUX_KBD_STRING      "SurfaceHIDAuxKeyboard"  // instance 2 answered: expose a second keyboard
+#define SURFACE_SLS_PLATFORM_HUB        "MSHW0123"               // ACPI id of the Surface Laptop Studio SAM platform hub
 #define SURFACE_LEGACY_FEAT_REPORT_SIZE 7
 
 #define SURFACE_HID_DESC_HEADER_SIZE sizeof(SurfaceHIDDescriptorBufferHeader)
@@ -74,7 +78,7 @@ public:
     
     void unregisterHIDEvent(OSObject* owner);
     
-    void eventReceived(UInt8 tc, UInt8 tid, UInt8 iid, UInt8 cid, UInt8 *data_buffer, UInt16 length) override;
+    void eventReceived(UInt8 tc, UInt8 tid_in, UInt8 iid, UInt8 cid, UInt8 *data_buffer, UInt16 length) override;
     
     IOReturn getHIDDescriptor(SurfaceHIDDeviceType device, SurfaceHIDDescriptor *desc);
     
@@ -92,6 +96,11 @@ private:
     EventHandler            handler {nullptr};
 
     bool    legacy {true};
+    bool    aux_keyboard {false};
+    // Surface Laptop 3 and the Pro/Book line address HID at target 2; the Laptop Studio at target 1
+    // (Linux: ssam:01:15:01:xx:00) and registers its events through the REG registry at that same target.
+    UInt8   tid {SSH_TID_SECONDARY};
+    SurfaceSerialEventRegistryType reg_type {SurfaceSerialEventHostManagedV2};
 
     IOReturn getDescriptorData(SurfaceHIDDeviceType device, SurfaceHIDDescriptorEntryType entry, UInt8 *buffer, UInt16 buffer_len);
     

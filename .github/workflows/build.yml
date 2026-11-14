@@ -1,0 +1,45 @@
+name: build-kext
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Toolchain
+        run: xcodebuild -version
+
+      - name: Build BigSurface.kext (Release, unsigned)
+        run: |
+          set -o pipefail
+          xcodebuild -workspace BigSurface.xcworkspace -scheme BigSurface -configuration Release \
+            -derivedDataPath build \
+            CODE_SIGN_IDENTITY="" CODE_SIGNING_REQUIRED=NO CODE_SIGNING_ALLOWED=NO \
+            MACOSX_DEPLOYMENT_TARGET=10.13 \
+            2>&1 | tee build.log | grep -E "error:|warning: .*(SurfaceHID|VoodooUART|SurfaceSerialHub)|\*\* BUILD" || true
+          grep -q "\*\* BUILD SUCCEEDED \*\*" build.log
+
+      - name: Inspect
+        run: |
+          KEXT=$(find build/Build/Products/Release -maxdepth 1 -name 'BigSurface.kext' | head -1)
+          echo "kext: $KEXT"; ls "$KEXT/Contents/PlugIns" || true
+          lipo -info "$KEXT/Contents/MacOS/BigSurface"
+          # the two changes that must be in the binary/plist
+          plutil -extract IOKitPersonalities.VoodooUARTController.IOPCIMatch raw "$KEXT/Contents/PlugIns/VoodooSerial.kext/Contents/Info.plist" 2>/dev/null || grep -rl 'a0a88086' "$KEXT" | head -3
+          strings "$KEXT/Contents/MacOS/BigSurface" | grep -E 'MSHW0123|SurfaceHIDTargetID' | sort -u
+          cd build/Build/Products/Release && zip -qry "$GITHUB_WORKSPACE/BigSurface-sls.zip" BigSurface.kext
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: BigSurface-surface-laptop-studio
+          path: |
+            BigSurface-sls.zip
+            build.log
+          if-no-files-found: error

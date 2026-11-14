@@ -6,10 +6,12 @@
 	url = https://github.com/Xiashangning/VoodooGPIO.git
 [submodule "Dependencies/VoodooSerial"]
 	path = Dependencies/VoodooSerial
-	url = https://github.com/Xiashangning/VoodooSerial.git
+	url = https://github.com/anoshmisiosdev/VoodooSerial.git
+	branch = surface-laptop-studio
 [submodule "Dependencies/VoodooInput"]
 	path = Dependencies/VoodooInput
 	url = https://github.com/Xiashangning/VoodooInput.git
 [submodule "Dependencies/BigSurfaceHIDDriver"]
 	path = Dependencies/BigSurfaceHIDDriver
-	url = https://github.com/Xiashangning/BigSurfaceHIDDriver.git
+	url = https://github.com/anoshmisiosdev/BigSurfaceHIDDriver.git
+	branch = surface-laptop-studio
