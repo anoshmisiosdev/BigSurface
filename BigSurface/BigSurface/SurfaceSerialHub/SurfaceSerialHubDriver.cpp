@@ -756,25 +756,28 @@ void SurfaceSerialHubDriver::releaseResources() {
 }
 
 VoodooGPIO* SurfaceSerialHubDriver::getGPIOController() {
-    VoodooGPIO* gpio_controller = nullptr;
-
-    // Wait for GPIO controller, up to 1 second
-    OSDictionary* name_match = serviceMatching("VoodooGPIO");
-    IOService* matched = waitForMatchingService(name_match, 1000000000);
-    gpio_controller = OSDynamicCast(VoodooGPIO, matched);
-    if (gpio_controller != NULL)
-        DBG_LOG("Got GPIO Controller! %s", gpio_controller->getName());
-    
-    OSSafeReleaseNULL(name_match);
-    OSSafeReleaseNULL(matched);
-
-    return gpio_controller;
+    // The GPIO controller kext can come up after us when other kexts shift the boot order; a single 1 s wait
+    // made probe() fail for good ("Could not find GPIO controller"). Retry like getUARTController() does.
+    for (int i = 0; i < 15; i++) {
+        OSDictionary* name_match = serviceMatching("VoodooGPIO");
+        IOService* matched = waitForMatchingService(name_match, 1000000000);
+        VoodooGPIO* gpio = OSDynamicCast(VoodooGPIO, matched);
+        OSSafeReleaseNULL(name_match);
+        OSSafeReleaseNULL(matched);
+        if (gpio) {
+            DBG_LOG("Got GPIO Controller! %s (after %d s)", gpio->getName(), i);
+            return gpio;
+        }
+        LOG("Waiting for GPIO controller (%d s)", i + 1);
+        IOSleep(1000);
+    }
+    return nullptr;
 }
 
 VoodooUARTController* SurfaceSerialHubDriver::getUARTController() {
     // Wait for UART controller, up to 1 second, try for 5 times
     // Sometimes it takes really a long time for UART to load
-    for (int i=0; i < 5; i++) {
+    for (int i=0; i < 10; i++) {
         OSDictionary* name_match = serviceMatching("VoodooUARTController");
         IOService* matched = waitForMatchingService(name_match, 1000000000);
         VoodooUARTController* uart = OSDynamicCast(VoodooUARTController, matched);
