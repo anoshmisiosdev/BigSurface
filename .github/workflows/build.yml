@@ -40,11 +40,17 @@ jobs:
             MACOSX_DEPLOYMENT_TARGET=10.13 \
             2>&1 | tee build.log | grep -E "error:|warning: .*(SurfaceHID|VoodooUART|SurfaceSerialHub)|\*\* BUILD" || true
           grep -q "\*\* BUILD SUCCEEDED \*\*" build.log
+          # a damaged sub-project is skipped silently by xcodebuild; treat it as a failure
+          ! grep -q "is damaged and cannot be opened" build.log
 
       - name: Inspect
         run: |
           KEXT=$(find build/Build/Products/Release -maxdepth 1 -name 'BigSurface.kext' | head -1)
-          echo "kext: $KEXT"; ls "$KEXT/Contents/PlugIns" || true
+          echo "kext: $KEXT"; ls "$KEXT/Contents/PlugIns"
+          for plg in VoodooGPIO VoodooSerial VoodooInput BigSurfaceHIDDriver; do
+            test -f "$KEXT/Contents/PlugIns/$plg.kext/Contents/MacOS/$plg" || { echo "::error::plugin $plg.kext missing"; exit 1; }
+          done
+          strings "$KEXT/Contents/PlugIns/VoodooGPIO.kext/Contents/MacOS/VoodooGPIO" | grep -q 'TigerLake-LP' && echo "VoodooGPIO has TigerLake-LP"
           lipo -info "$KEXT/Contents/MacOS/BigSurface"
           # the two changes that must be in the binary/plist
           plutil -extract IOKitPersonalities.VoodooUARTController.IOPCIMatch raw "$KEXT/Contents/PlugIns/VoodooSerial.kext/Contents/Info.plist" 2>/dev/null || grep -rl 'a0a88086' "$KEXT" | head -3
