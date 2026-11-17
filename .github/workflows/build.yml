@@ -41,6 +41,7 @@ jobs:
             2>&1 | tee build.log | grep -E "error:|warning: .*(SurfaceHID|VoodooUART|SurfaceSerialHub)|\*\* BUILD" || true
           grep -q "\*\* BUILD SUCCEEDED \*\*" build.log
           # a damaged sub-project is skipped silently by xcodebuild; treat it as a failure
+          grep -n -E "damaged and cannot be opened|Failed to load container|Path: " build.log || true
           ! grep -q "is damaged and cannot be opened" build.log
 
       - name: Inspect
@@ -58,9 +59,10 @@ jobs:
           cd build/Build/Products/Release && zip -qry "$GITHUB_WORKSPACE/BigSurface-sls.zip" BigSurface.kext
 
       - uses: actions/upload-artifact@v4
+        if: always()
         with:
           name: BigSurface-surface-laptop-studio
           path: |
             BigSurface-sls.zip
             build.log
-          if-no-files-found: error
+          if-no-files-found: warn
